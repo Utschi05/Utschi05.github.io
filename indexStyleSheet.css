@@ -1,0 +1,13 @@
+body{
+    /*Background Color*/
+    background-color:rgb(0, 0, 0);
+    /*Text Color*/
+    color: whitesmoke;
+}
+
+html,body{
+    margin:0px;
+    height:100%;
+}
+
+#map {  height:100%; }
