@@ -106,7 +106,7 @@
 
                         var marker = L.marker([jsonObject.elements[i].lat, jsonObject.elements[i].lon]).addTo(map);
 
-                        marker.bindPopup("<br>Hydrant<br>").openPopup();
+                        marker.bindPopup("<h1>Hydrant<h1>").openPopup();
                         /*
                         document.getElementById("fileOutput").innerHTML += "<br>";
                         //Display ID:
@@ -122,6 +122,7 @@
                         */
                     }
 
+                    map.setView([52.41037, 10.17706], 15);
 
 
                 })
