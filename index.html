@@ -3,6 +3,10 @@
 <html>
 
 <head>
+
+    <title>Feuerwehr Karte</title>
+
+
     <link rel="stylesheet" href="indexStyleSheet.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -22,10 +26,110 @@
     <script>
         var map = L.map('map').setView([52.41037, 10.17706], 15);
 
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+
+        var opernStreetMap = new L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
+
+
+
+        
+        var OpenRailwayMap = new L.TileLayer('http://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
+        {
+	        attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>, Style: <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA 2.0</a> <a href="http://www.openrailwaymap.org/">OpenRailwayMap</a> and OpenStreetMap',
+	        minZoom: 2,
+	        maxZoom: 19,
+	        tileSize: 256
+        }).addTo(map);
+
+
+        GetData();
+
+
+        async function GetData(){
+         
+            //API URl
+            var url = "https://overpass-api.de/api/interpreter"
+
+            //Change request at https://overpass-turbo.eu/# and export as json
+            var request = 
+            `
+            [out:json][timeout:25];
+            (
+            node["emergency"="fire_hydrant"](52.39959100269022,10.061759948730469,52.54253746965676,10.281486511230469);
+            );
+            out body;
+            >;
+            out skel qt;
+            `
+
+
+
+            console.log("Getting Data...")
+            console.log("Starting API request...")
+            console.log(request);
+            
+
+            
+            request = "data="+encodeURIComponent(request);
+
+            let data = new FormData();
+
+            data.append('data',request);
+
+           
+
+             fetch(url, {method: 'POST', body:request,}).then(data => {
+                data.text().then(function(result){ 
+
+                    //Gathered Data:
+                    console.log("Gathering API Data...")
+                    console.log(result)
+                
+                    
+                    let jsonObject = JSON.parse(result);
+                    /*
+                    document.getElementById("fileOutput").innerHTML = "API Version: " + jsonObject.version;
+                    document.getElementById("fileOutput").innerHTML += "|Copyright: " + jsonObject.osm3s.copyright;
+                    document.getElementById("fileOutput").innerHTML += "|Build Time: " + jsonObject.osm3s.timestamp_osm_base;
+                    document.getElementById("fileOutput").innerHTML += "<br><br>";
+
+                    document.getElementById("fileOutput").innerHTML += "Es sind " + jsonObject.elements.length + " Hydranten gefunden worden";
+                    document.getElementById("fileOutput").innerHTML += "<br><br>";
+
+                    */
+
+                    for(let i = 0; i < jsonObject.elements.length; i++){
+
+
+                        var marker = L.marker([jsonObject.elements[i].lat, jsonObject.elements[i].lon]).addTo(map);
+
+                        marker.bindPopup("<br>Hydrant<br>").openPopup();
+                        /*
+                        document.getElementById("fileOutput").innerHTML += "<br>";
+                        //Display ID:
+                        document.getElementById("fileOutput").innerHTML += jsonObject.elements[i].id;
+                        document.getElementById("fileOutput").innerHTML += "<br>";
+                        //Display Position:
+                        document.getElementById("fileOutput").innerHTML += "Position: " + jsonObject.elements[i].lat + " lat " + jsonObject.elements[i].lon + " lon";
+                        document.getElementById("fileOutput").innerHTML += "<br>";
+
+                        document.getElementById("fileOutput").innerHTML += jsonObject.elements[i].tags.emergency;
+                        document.getElementById("fileOutput").innerHTML += "<br>";
+                        document.getElementById("fileOutput").innerHTML += "<br>";
+                        */
+                    }
+
+
+
+                })
+            })
+
+        }
+
+
     </script>
 
 
