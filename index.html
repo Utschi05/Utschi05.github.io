@@ -44,7 +44,15 @@
 	        tileSize: 256
         }).addTo(map);
 
+/*
+        var marker = L.marker([52.41037, 10.17706]).addTo(map);
+        marker.bindPopup("<b>Hydrant</b><br>Unterflur<br>Auf Grünfläche<br>100mm Durchmesser").openPopup();
 
+        var marker2 = L.marker([52.41137, 10.17806]).addTo(map);
+        marker2.bindPopup("<b>Hydrant</b><br>Unterflur<br>Auf Grünfläche<br>100mm Durchmesser").openPopup();
+
+        map.setView([52.41037, 10.17706], 15);
+*/
         GetData();
 
 
@@ -53,10 +61,10 @@
             //API URl
             var url = "https://overpass-api.de/api/interpreter"
 
-            //Change request at https://overpass-turbo.eu/# and export as json
+            //Change request at https://overpass-turbo.eu/# and export as xml
             var request = 
             `
-            [out:json][timeout:25];
+            [out:xml][timeout:25];
             (
             node["emergency"="fire_hydrant"](52.39959100269022,10.061759948730469,52.54253746965676,10.281486511230469);
             );
@@ -89,39 +97,106 @@
                     console.log(result)
                 
                     
-                    let jsonObject = JSON.parse(result);
-                    /*
-                    document.getElementById("fileOutput").innerHTML = "API Version: " + jsonObject.version;
-                    document.getElementById("fileOutput").innerHTML += "|Copyright: " + jsonObject.osm3s.copyright;
-                    document.getElementById("fileOutput").innerHTML += "|Build Time: " + jsonObject.osm3s.timestamp_osm_base;
-                    document.getElementById("fileOutput").innerHTML += "<br><br>";
+                    
 
-                    document.getElementById("fileOutput").innerHTML += "Es sind " + jsonObject.elements.length + " Hydranten gefunden worden";
-                    document.getElementById("fileOutput").innerHTML += "<br><br>";
+                    var xmlFile;
+                    if(window.ActiveXObject)  
+                    {  
+                        xmlFile = new ActiveXObject('Microsoft.XMLDOM'); // For IE6, IE5  
+                        xmlFile.async = 'false';  
+                        xmlFile.loadXML(result);  
+                    }  
+                    else  
+                    {  
+                        var parser = new DOMParser();  
+                        xmlFile = parser.parseFromString(result, 'text/xml'); // For Firefox, Chrome etc  
+                    }  
 
-                    */
+                    var nodes =  xmlFile.getElementsByTagName("node");
 
-                    for(let i = 0; i < jsonObject.elements.length; i++){
+                    for(let i = 0; i < nodes.length; i++){
+
+                        var marker = L.marker([nodes[i].getAttribute("lat"), nodes[i].getAttribute("lon")]).addTo(map);
+
+                        let popUpHTML;
+                        popUpHTML = "<b>Hydrant</b>"
+
+                        let tag = nodes[i].getElementsByTagName('tag');
+
+                        //Loop trough tag's of Node
+                        for(let x = 0; x < tag.length; x++){
+                            //Get Atrributes of tag
+                            let k = tag[x].getAttribute('k');
+                            let v = tag[x].getAttribute('v');
+                            console.log(k, v);
 
 
-                        var marker = L.marker([jsonObject.elements[i].lat, jsonObject.elements[i].lon]).addTo(map);
+                            if(k == "fire_hydrant:type"){
+                                //console.log(k, v);
 
-                        marker.bindPopup("<h1>Hydrant<h1>").openPopup();
-                        /*
-                        document.getElementById("fileOutput").innerHTML += "<br>";
-                        //Display ID:
-                        document.getElementById("fileOutput").innerHTML += jsonObject.elements[i].id;
-                        document.getElementById("fileOutput").innerHTML += "<br>";
-                        //Display Position:
-                        document.getElementById("fileOutput").innerHTML += "Position: " + jsonObject.elements[i].lat + " lat " + jsonObject.elements[i].lon + " lon";
-                        document.getElementById("fileOutput").innerHTML += "<br>";
+                                switch(v)
+                                {
+                                    case 'underground':
+                                        popUpHTML += "<br>Unterflur";
+                                        break;
 
-                        document.getElementById("fileOutput").innerHTML += jsonObject.elements[i].tags.emergency;
-                        document.getElementById("fileOutput").innerHTML += "<br>";
-                        document.getElementById("fileOutput").innerHTML += "<br>";
-                        */
+                                    case 'pillar':
+                                        popUpHTML += "<br>Oberflur";
+                                    break;
+
+                                    case 'pipe':
+                                        popUpHTML += "<br>Anschlussrohr";
+                                    break;
+
+                                    case 'wall':
+                                        popUpHTML += "<br>Wandhydrant";
+                                    break;
+
+                                    default:
+                                    break;
+                                }
+                            }
+
+
+                            if (k == "fire_hydrant:position") {
+                                switch (v) {
+                                    case 'green':
+                                        popUpHTML += "<br>Auf Grünfläche";
+                                        break;
+
+                                    case 'lane':
+                                        popUpHTML += "<br>Auf Straßenfläche";
+                                        break;
+
+                                    case 'sidewalk':
+                                        popUpHTML += "<br>Auf Bürgersteig";
+                                        break;
+
+                                    case 'parking_lot':
+                                        popUpHTML +=  "<br>Auf Parkplatz";
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+
+                            }
+
+                            if(k == "fire_hydrant:diameter"){
+                                popUpHTML += "<br>Durchmesser " + v;
+                            }
+
+                            if(k == "flow_rate"){
+                                popUpHTML += "<br>Durchflussmenge " + v;
+                            }
+                        }
+
+
+                        marker.bindPopup(popUpHTML).openPopup();
+
+                       
+
                     }
-
                     map.setView([52.41037, 10.17706], 15);
 
 
