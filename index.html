@@ -3,36 +3,65 @@
 <html>
 
 <head>
-
+    <meta charset="UTF-8">
     <title>Feuerwehr Karte</title>
 
 
+    <!--Normal Sytlesheet-->
     <link rel="stylesheet" href="indexStyleSheet.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-     crossorigin=""/>
+
+    <!--Leaflet Script und Stylesheet-->
+    <link rel="stylesheet" href="leaflet/leaflet.css">
+    <script src="leaflet/leaflet.js"></script>
+
+    <!--Escri Geocoder Script und Stylesheet        -Apache License Version 2.0 -->
+    <!--<link rel="stylesheet" href="leaflet/esri-leaflet-geocoder-master/src/esri-leaflet-geocoder.css">
+    <script src="leaflet/esri-leaflet-geocoder-master/src/EsriLeafletGeocoding.js"></script>-->
+
+
 </head>
 
 <body>
+    <!--Leaflet Script-->
+    <script src="leaflet/leaflet.js"></script>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""></script>
-
+    <!--Map Anzeige-->
     <div id="map"></div>
 
 
 
     <script>
+
+        /*
+        TODO
+        Convert adress to lat and lon   -> API finden
+        In den Vordergrund die Hydranten in einem Radius        
+        */
+
+        var targetLat =     0;
+        var targetLng =     0;
+        var hydrantRadius =  0.00050;
+
+        //Hydrant Icons
+        var redHydrant = new L.icon({iconUrl: 'img/redHydrant.png',iconSize: [32,32]});
+
+        var blackHydrant = new L.icon({iconUrl: 'img/normalHydrant.png',iconSize: [16,16] });
+        //Target Icon
+        var targetIcon = new L.icon({iconUrl: 'img/sirene.png',iconSize: [32,32]});
+
+        var targetMarker = L.marker([52.41037, 10.17706],{icon: targetIcon, draggable: 'true'});
+
+
         var map = L.map('map').setView([52.41037, 10.17706], 15);
 
+        //List of all Markers
+        var markerList = [];
 
 
         var opernStreetMap = new L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-
 
 
         
@@ -44,17 +73,10 @@
 	        tileSize: 256
         }).addTo(map);
 
-/*
-        var marker = L.marker([52.41037, 10.17706]).addTo(map);
-        marker.bindPopup("<b>Hydrant</b><br>Unterflur<br>Auf Grünfläche<br>100mm Durchmesser").openPopup();
-
-        var marker2 = L.marker([52.41137, 10.17806]).addTo(map);
-        marker2.bindPopup("<b>Hydrant</b><br>Unterflur<br>Auf Grünfläche<br>100mm Durchmesser").openPopup();
-
-        map.setView([52.41037, 10.17706], 15);
-*/
         GetData();
 
+        //When map is clicked:
+        map.on('click', onMapClick);
 
         async function GetData(){
          
@@ -72,7 +94,6 @@
             >;
             out skel qt;
             `
-
 
 
             console.log("Getting Data...")
@@ -116,10 +137,16 @@
 
                     for(let i = 0; i < nodes.length; i++){
 
-                        var marker = L.marker([nodes[i].getAttribute("lat"), nodes[i].getAttribute("lon")]).addTo(map);
+                        var marker = L.marker([nodes[i].getAttribute("lat"), nodes[i].getAttribute("lon")],{icon: redHydrant}).addTo(map);
+                        
 
-                        let popUpHTML;
-                        popUpHTML = "<b>Hydrant</b>"
+                        let hydrantType = ""; 
+                        let hydrantPosition = "";
+                        let hydrantFlow = "";
+                        let hydrantDiameter = "";
+                        
+
+                        
 
                         let tag = nodes[i].getElementsByTagName('tag');
 
@@ -130,80 +157,173 @@
                             let v = tag[x].getAttribute('v');
                             console.log(k, v);
 
+                            //Hydranten Typ:
 
-                            if(k == "fire_hydrant:type"){
-                                //console.log(k, v);
+                            if (k == "fire_hydrant:type") {
 
-                                switch(v)
-                                {
+                                switch (v) {
                                     case 'underground':
-                                        popUpHTML += "<br>Unterflur";
+                                        hydrantType = "Unterflurhydrant";
                                         break;
 
                                     case 'pillar':
-                                        popUpHTML += "<br>Oberflur";
-                                    break;
+                                        hydrantType = "Oberflurhydrant";
+                                        break;
 
-                                    case 'pipe':
-                                        popUpHTML += "<br>Anschlussrohr";
-                                    break;
+                                    case 'pipe':    //Anschlussrohr / Saugstelle
+                                        hydrantType = "Saugstelle";
+                                        break;
 
                                     case 'wall':
-                                        popUpHTML += "<br>Wandhydrant";
-                                    break;
+                                        hydrantType = "Wandhydrant";
+                                        break;
 
                                     default:
-                                    break;
+                                        hydrantType = "Hydrant";
+                                        break;
                                 }
                             }
 
+                            //Hydranten Position
 
                             if (k == "fire_hydrant:position") {
+
                                 switch (v) {
                                     case 'green':
-                                        popUpHTML += "<br>Auf Grünfläche";
+                                        hydrantPosition = "<br>Auf Grünfläche";
                                         break;
 
                                     case 'lane':
-                                        popUpHTML += "<br>Auf Straßenfläche";
+                                        hydrantPosition = "<br>Auf Straßenfläche";
                                         break;
 
                                     case 'sidewalk':
-                                        popUpHTML += "<br>Auf Bürgersteig";
+                                        hydrantPosition = "<br>Auf Bürgersteig";
                                         break;
 
                                     case 'parking_lot':
-                                        popUpHTML +=  "<br>Auf Parkplatz";
+                                        hydrantPosition = "<br>Auf Parkplatz";
                                         break;
                                     default:
+                                        hydrantPosition = "";
                                         break;
                                 }
 
-
                             }
 
-                            if(k == "fire_hydrant:diameter"){
-                                popUpHTML += "<br>Durchmesser " + v;
+                            //Hydranten Durchfluss
+
+                            if (k == "flow_rate") {
+                                hydrantFlow = "<br>Durchflussmenge " + v;
                             }
 
-                            if(k == "flow_rate"){
-                                popUpHTML += "<br>Durchflussmenge " + v;
+                            //Hydranten Durchmesser
+
+                            if (k == "fire_hydrant:diameter") {
+                                hydrantDiameter = "<br>Durchmesser " + v + "mm";
                             }
+
+                            
                         }
 
+                        markerList.push(marker);
 
-                        marker.bindPopup(popUpHTML).openPopup();
+                        marker.bindPopup("<b>" + hydrantType + "</b>" +  hydrantPosition + "" + hydrantFlow + "" + hydrantDiameter).openPopup();
 
-                       
 
                     }
+
+                    console.log("Map Marker Loading finished")
+                    //Set view to Feuerwehrhaus
                     map.setView([52.41037, 10.17706], 15);
 
+
+                    
+
+                    //Change all Markers
+                    for(let i = 0; i < markerList.length;i++){
+
+                        //Check if marker is inside a radius
+
+                        let markerX = markerList[i].getLatLng().lng;
+                        let markerY = markerList[i].getLatLng().lat;
+
+                        if((markerX - targetLng) * (markerX - targetLng) + 
+                           (markerY - targetLat) * (markerY - targetLat) <= hydrantRadius * hydrantRadius)
+                           {
+                            //Inside radius:
+                            markerList[i].setIcon(redHydrant);
+                           }else {
+                            //Outside radius:
+                            markerList[i].setIcon(blackHydrant);
+                           }
+
+                    }
+
+                    setHydrantsOn();
+
+                   
+                    targetMarker.bindPopup("<b>Einsatzstelle</b>");
+                  
+
+                    targetMarker.on('dragend', function(e){
+                        targetLng = e.latlng.lng;
+                        targetLat = e.latlng.lat;
+                        setHydrantsInRadius();
+                    });
+                   
+
+                    console.log("End");
 
                 })
             })
 
         }
+
+            function onMapClick(e){
+                targetLng = e.latlng.lng;
+                targetLat = e.latlng.lat;
+
+                setHydrantsInRadius();
+            }
+
+
+            function setHydrantsOn(){
+                //Change all Markers
+                for (let i = 0; i < markerList.length; i++) {
+                    markerList[i].setIcon(redHydrant);
+                }
+            }
+
+
+            function setHydrantsOff() {
+                //Change all Markers
+                for (let i = 0; i < markerList.length; i++) {
+                    markerList[i].setIcon(blackHydrant);
+                }
+
+            }
+
+        function setHydrantsInRadius() {
+                //Change all Markers
+                for (let i = 0; i < markerList.length; i++) {
+
+                    //Check if marker is inside a radius
+
+                    let markerX = markerList[i].getLatLng().lng;
+                    let markerY = markerList[i].getLatLng().lat;
+
+                    if ((markerX - targetLng) * (markerX - targetLng) +
+                        (markerY - targetLat) * (markerY - targetLat) <= hydrantRadius * hydrantRadius) {
+                        //Inside radius:
+                        markerList[i].setIcon(redHydrant);
+                    } else {
+                        //Outside radius:
+                        markerList[i].setIcon(blackHydrant);
+                    }
+
+                }
+            }
 
 
     </script>
